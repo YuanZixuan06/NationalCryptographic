@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>帮助中心 - 国密加密实验平台</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+  <div class="page-shell help-shell">
+    <header class="hero compact">
+      <div class="hero-copy">
+        <p class="eyebrow">帮助页面</p>
+        <h1>使用说明与实验建议</h1>
+        <p class="hero-text">这里汇总了网页端工具的使用方法、推荐实验流程、图片文件头处理注意事项，以及常见错误说明。适合你在课程演示前快速复习操作步骤。</p>
+        <div class="hero-actions">
+          <a class="button primary" href="{{ url_for('index') }}">返回主页面</a>
+        </div>
+      </div>
+    </header>
+
+    <main class="help-grid">
+      <section class="card">
+        <div class="card-header">
+          <h2>推荐实验流程</h2>
+        </div>
+        <ol class="help-list">
+          <li>先在主页面左侧生成一组 SM2 公私钥、SM4 Key 和 IV。</li>
+          <li>到“文本实验区”完成字符串加密、解密与 SM3 摘要实验。</li>
+          <li>在“文件与图片实验区”上传文本、图片、PDF、DOCX 等文件，测试分块加解密。</li>
+          <li>如果要展示图片头部处理效果，优先尝试 `raw` 模式并设置保留文件头参数。</li>
+          <li>最后运行“性能测试与图表”，对比不同算法和数据量下的加密时间、吞吐量。</li>
+        </ol>
+      </section>
+
+      <section class="card">
+        <div class="card-header">
+          <h2>图片加密注意事项</h2>
+        </div>
+        <ul class="help-list">
+          <li>`bundle` 模式更稳，解密后能完整恢复原文件，但加密后的图片通常不能直接预览。</li>
+          <li>`raw` 模式适合做文件头保留实验，便于展示图片格式头的作用。</li>
+          <li>对于 JPG、PNG 这类压缩格式，只保留文件头不保证加密文件仍然可视，但解密后可以恢复原图。</li>
+        </ul>
+      </section>
+
+      <section class="card">
+        <div class="card-header">
+          <h2>性能说明</h2>
+        </div>
+        <ul class="help-list">
+          <li>当前核心加密逻辑仍然基于 Python 层的 SM4 分块处理，跑 benchmark 时 CPU 占用会比较高。</li>
+          <li>网页端相对于桌面 GUI 的优势在于：界面更灵活、图表更适合展示、帮助内容更容易组织。</li>
+          <li>如果后续还要继续优化，应优先考虑把长任务做成后台异步任务，或替换为更高性能的底层实现。</li>
+        </ul>
+      </section>
+
+      <section class="card">
+        <div class="card-header">
+          <h2>常见错误</h2>
+        </div>
+        <ul class="help-list">
+          <li>密钥长度错误：SM2 私钥应为 64 位十六进制，SM4 Key 和 IV 应为 32 位十六进制。</li>
+          <li>密文解析失败：通常是 Base64 和 Hex 编码选择不一致，请检查文本实验区的编码下拉框。</li>
+          <li>文件解密失败：如果使用 `raw` 模式，请确认解密时的模式、IV 和文件头参数与加密时完全一致。</li>
+          <li>图表无法生成：请确认环境里已经安装 `matplotlib`，并且性能测试至少成功运行过一次。</li>
+        </ul>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

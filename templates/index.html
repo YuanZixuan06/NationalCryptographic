@@ -1,0 +1,1181 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>国密加密实验平台</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+  <div class="page-shell">
+    <header class="hero">
+      <div class="hero-copy">
+        <p class="eyebrow">本地部署 / 中文界面 / 国密实验</p>
+        <h1>国密加密解密实验平台</h1>
+        <p class="hero-text">这是一个面向课程实验的本地网页工具，围绕 SM2、SM3、SM4 提供文本、图片、普通文件和性能测试功能。界面采用中文设计，并附带帮助页面与图表输出能力。</p>
+        <div class="hero-actions">
+          <a class="button primary" href="#workspace">立即开始实验</a>
+          <a class="button ghost" href="{{ url_for('help_page') }}">查看帮助页面</a>
+        </div>
+      </div>
+      <div class="hero-panel">
+        <div class="metric-card">
+          <span class="metric-label">算法支持</span>
+          <strong>SM2 / SM3 / SM4</strong>
+        </div>
+        <div class="metric-card">
+          <span class="metric-label">实验对象</span>
+          <strong>文本 / 图片 / 文件</strong>
+        </div>
+        <div class="metric-card">
+          <span class="metric-label">可视化输出</span>
+          <strong>时间图 / 吞吐量图</strong>
+        </div>
+      </div>
+    </header>
+
+    <main id="workspace" class="workspace-grid">
+      <aside class="sidebar card">
+        <div class="card-header">
+          <h2>密钥与状态</h2>
+          <p>这里统一管理 SM2 公私钥、SM4 Key 和 IV，方便你在不同实验区复用参数。</p>
+        </div>
+
+        <div class="inline-feedback" id="key-feedback"></div>
+
+        <div class="key-panel-grid">
+          <section class="key-panel">
+            <div class="key-panel-header">
+              <div>
+                <h3>SM2 密钥对</h3>
+              </div>
+              <div class="key-inline-actions">
+                <button class="button secondary" type="button" id="generate-sm2-btn">生成</button>
+                <button class="button fill-action" type="button" id="fill-sm2-btn">填充</button>
+              </div>
+            </div>
+
+            <div class="key-display-stack">
+              <div class="key-block">
+                <div class="key-block-head">
+                  <span>公钥</span>
+                  <button class="mini-copy-btn" type="button" data-copy-target="sm2-public-display">复制</button>
+                </div>
+                <textarea id="sm2-public-display" class="key-display-area" readonly>{{ form.sm2_public_key }}</textarea>
+              </div>
+              <div class="key-block">
+                <div class="key-block-head">
+                  <span>私钥</span>
+                  <button class="mini-copy-btn" type="button" data-copy-target="sm2-private-display">复制</button>
+                </div>
+                <textarea id="sm2-private-display" class="key-display-area" readonly>{{ form.sm2_private_key }}</textarea>
+              </div>
+            </div>
+
+          </section>
+
+          <section class="key-panel">
+            <div class="key-panel-header">
+              <div>
+                <h3>SM4 密钥材料</h3>
+              </div>
+              <div class="key-inline-actions">
+                <button class="button secondary" type="button" id="generate-sm4-btn">生成</button>
+                <button class="button fill-action" type="button" id="fill-sm4-btn">填充</button>
+              </div>
+            </div>
+
+            <div class="key-display-stack">
+              <div class="key-block">
+                <div class="key-block-head">
+                  <span>SM4 Key</span>
+                  <button class="mini-copy-btn" type="button" data-copy-target="sm4-key-display">复制</button>
+                </div>
+                <textarea id="sm4-key-display" class="key-display-area" readonly>{{ form.sm4_key }}</textarea>
+              </div>
+              <div class="key-block">
+                <div class="key-block-head">
+                  <span>SM4 IV</span>
+                  <button class="mini-copy-btn" type="button" data-copy-target="sm4-iv-display">复制</button>
+                </div>
+                <textarea id="sm4-iv-display" class="key-display-area" readonly>{{ form.sm4_iv }}</textarea>
+              </div>
+            </div>
+
+          </section>
+        </div>
+        <p class="sidebar-note">建议先生成一组实验密钥，再到文本、文件和性能测试区反复复用。</p>
+      </aside>
+
+      <section class="content-stack">
+        <div class="tab-shell">
+          <div class="tab-bar" role="tablist" aria-label="实验功能切换">
+            <button class="tab-btn active" type="button" data-tab-target="tab-text">文本实验</button>
+            <button class="tab-btn" type="button" data-tab-target="tab-file">文件与图片</button>
+            <button class="tab-btn" type="button" data-tab-target="tab-benchmark">性能测试</button>
+          </div>
+
+          <section class="card tab-panel active" id="tab-text">
+          <div class="card-header">
+            <h2>文本实验区</h2>
+            <p>支持文本加密、文本解密和 SM3 摘要，结果分成两栏展示，更适合演示和复制。</p>
+          </div>
+          <form method="post" action="{{ url_for('text_tools') }}" data-api-url="{{ url_for('api_text_tools') }}" class="stack-form async-form" id="text-form" data-last-submitted-state="">
+            <div class="form-grid four">
+              <div class="field-group">
+                <label>算法 <span class="help-tip" tabindex="0" data-tip="选择当前要使用的国密算法。SM4 适合对称加密，SM2 适合短文本非对称加密，SM3 是单向摘要。">?</span></label>
+                <select name="text_algorithm" id="text-algorithm-select">
+                  <option value="sm4" {% if form.text_algorithm == 'sm4' %}selected{% endif %}>SM4</option>
+                  <option value="sm2" {% if form.text_algorithm == 'sm2' %}selected{% endif %}>SM2</option>
+                  <option value="sm3" {% if form.text_algorithm == 'sm3' %}selected{% endif %}>SM3</option>
+                </select>
+              </div>
+              <div class="field-group text-sm4-only">
+                <label>SM4 模式 <span class="help-tip" tabindex="0" data-tip="CBC 模式需要额外的 IV，安全性更常用；ECB 不需要 IV，但不适合重复块明显的数据。">?</span></label>
+                <select name="text_sm4_mode">
+                  <option value="cbc" {% if form.text_sm4_mode == 'cbc' %}selected{% endif %}>CBC</option>
+                  <option value="ecb" {% if form.text_sm4_mode == 'ecb' %}selected{% endif %}>ECB</option>
+                </select>
+              </div>
+              <div class="field-group text-sm2-only">
+                <label>SM2 模式 <span class="help-tip" tabindex="0" data-tip="C1C3C2 与 C1C2C3 是 SM2 密文组织格式，两端需保持一致。常用推荐 C1C3C2。">?</span></label>
+                <select name="text_sm2_mode">
+                  <option value="c1c3c2" {% if form.text_sm2_mode == 'c1c3c2' %}selected{% endif %}>C1C3C2</option>
+                  <option value="c1c2c3" {% if form.text_sm2_mode == 'c1c2c3' %}selected{% endif %}>C1C2C3</option>
+                </select>
+              </div>
+              <div class="field-group text-enc-only">
+                <label>密文编码 <span class="help-tip" tabindex="0" data-tip="决定密文如何显示与输入。Base64 更适合复制传输，Hex 更适合实验观察字节内容。">?</span></label>
+                <select name="text_encoding">
+                  <option value="base64" {% if form.text_encoding == 'base64' %}selected{% endif %}>Base64</option>
+                  <option value="hex" {% if form.text_encoding == 'hex' %}selected{% endif %}>Hex</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-grid two text-sm2-only">
+              <div class="field-group">
+                <label>SM2 公钥 <span class="help-tip" tabindex="0" data-tip="SM2 公钥用于加密。它可以公开给别人，自己保存对应私钥即可。">?</span></label>
+                <textarea name="sm2_public_key">{{ form.sm2_public_key }}</textarea>
+              </div>
+              <div class="field-group">
+                <label>SM2 私钥 <span class="help-tip" tabindex="0" data-tip="SM2 私钥用于解密。必须保密，丢失后将无法恢复对应密文。">?</span></label>
+                <textarea name="sm2_private_key">{{ form.sm2_private_key }}</textarea>
+              </div>
+            </div>
+
+            <div class="form-grid two text-sm4-only">
+              <div class="field-group">
+                <label>SM4 Key <span class="help-tip" tabindex="0" data-tip="SM4 对称密钥，长度固定为 128 bit，即 32 位十六进制。加解密双方必须一致。">?</span></label>
+                <input type="text" name="sm4_key" value="{{ form.sm4_key }}">
+              </div>
+              <div class="field-group">
+                <label>SM4 IV <span class="help-tip" tabindex="0" data-tip="CBC 模式下使用的初始化向量。它不必保密，但加解密时必须一致。ECB 模式下不需要。">?</span></label>
+                <input type="text" name="sm4_iv" value="{{ form.sm4_iv }}">
+              </div>
+            </div>
+
+            <div class="field-group">
+              <label>输入文本 / 密文</label>
+              <textarea name="text_input" class="tall">{{ form.text_input }}</textarea>
+            </div>
+
+            <div class="inline-feedback" id="text-feedback"></div>
+            <div class="button-row">
+              <button class="button primary" type="submit" name="text_action" value="encrypt">加密</button>
+              <button class="button secondary" type="submit" name="text_action" value="decrypt">解密</button>
+            </div>
+          </form>
+
+          <div id="text-result-container">
+            {% if text_result %}
+              <div class="result-toolbar">
+                <div class="subheading">{{ text_result.title }}</div>
+                <div class="result-actions">
+                  <button class="result-action-btn" type="button" data-copy-result="text-result-container">复制结果</button>
+                  <button class="result-action-btn" type="button" data-clear-result="text-result-container">清空结果</button>
+                </div>
+              </div>
+              <article class="cipher-card">
+                <div class="cipher-card-header">
+                  <h3>{{ text_result.left_label }}</h3>
+                  <button class="mini-copy-btn large" type="button" data-copy-result-box="text-primary-result">复制</button>
+                </div>
+                <textarea id="text-primary-result" readonly class="result-box cipher-box">{{ text_result.left_value }}</textarea>
+                <div class="cipher-meta"><strong>{{ text_result.right_label }}</strong>：{{ text_result.right_value }}</div>
+              </article>
+            {% endif %}
+          </div>
+          </section>
+
+          <section class="card tab-panel" id="tab-file">
+          <div class="card-header">
+            <h2>文件与图片实验区</h2>
+            <p>支持普通文件和图片文件的加密、解密与 SM3 摘要。图片实验可以用保留文件头参数展示格式头处理效果。</p>
+          </div>
+          <form method="post" action="{{ url_for('file_tools') }}" data-api-url="{{ url_for('api_file_tools') }}" enctype="multipart/form-data" class="stack-form async-form" id="file-form" data-last-submitted-state="">
+            <div class="form-grid three">
+              <div class="field-group">
+                <label>算法 <span class="help-tip" tabindex="0" data-tip="文件实验里，SM4 适合直接加密文件；SM2 + SM4 表示使用 SM2 保护 SM4 会话密钥。">?</span></label>
+                <select name="file_algorithm" id="file-algorithm-select">
+                  <option value="sm4" {% if form.file_algorithm == 'sm4' %}selected{% endif %}>SM4</option>
+                  <option value="sm2-sm4" {% if form.file_algorithm == 'sm2-sm4' %}selected{% endif %}>SM2 + SM4</option>
+                </select>
+              </div>
+              <div class="field-group">
+                <label>布局 <span class="help-tip" tabindex="0" data-tip="Bundle 会把元数据一起封装，解密更方便；Raw 更适合图片头保留实验，但解密时参数必须完全一致。">?</span></label>
+                <select name="file_layout">
+                  <option value="bundle" {% if form.file_layout == 'bundle' %}selected{% endif %}>Bundle</option>
+                  <option value="raw" {% if form.file_layout == 'raw' %}selected{% endif %}>Raw</option>
+                </select>
+              </div>
+              <div class="field-group file-sm4-only">
+                <label>SM4 模式 <span class="help-tip" tabindex="0" data-tip="CBC 更常用于实际文件加密，ECB 仅适合做实验对比。">?</span></label>
+                <select name="file_sm4_mode">
+                  <option value="cbc" {% if form.file_sm4_mode == 'cbc' %}selected{% endif %}>CBC</option>
+                  <option value="ecb" {% if form.file_sm4_mode == 'ecb' %}selected{% endif %}>ECB</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-grid four">
+              <div class="field-group file-sm2-only">
+                <label>SM2 模式 <span class="help-tip" tabindex="0" data-tip="SM2 模式决定混合加密里会话密钥的密文组织方式，解密端需保持一致。">?</span></label>
+                <select name="file_sm2_mode">
+                  <option value="c1c3c2" {% if form.file_sm2_mode == 'c1c3c2' %}selected{% endif %}>C1C3C2</option>
+                  <option value="c1c2c3" {% if form.file_sm2_mode == 'c1c2c3' %}selected{% endif %}>C1C2C3</option>
+                </select>
+              </div>
+              <div class="field-group">
+                <label>Chunk Size <span class="help-tip" tabindex="0" data-tip="文件按块读取和处理的大小。块越大，I/O 次数越少，但内存占用会稍高。">?</span></label>
+                <input type="text" name="file_chunk_size" value="{{ form.file_chunk_size }}">
+              </div>
+              <div class="field-group">
+                <label>监控间隔 <span class="help-tip" tabindex="0" data-tip="性能采样的时间间隔，单位秒。值越小，统计越细，但采样开销会增加。">?</span></label>
+                <input type="text" name="file_monitor_interval" value="{{ form.file_monitor_interval }}">
+              </div>
+              <div class="field-group">
+                <label>保留文件头字节 <span class="help-tip" tabindex="0" data-tip="加密图片时可以保留前若干字节不加密，以观察文件头对格式识别的影响。">?</span></label>
+                <input type="text" name="file_keep_header" value="{{ form.file_keep_header }}">
+              </div>
+            </div>
+
+            <div class="form-grid two file-sm2-only">
+              <div class="field-group">
+                <label>SM2 公钥 <span class="help-tip" tabindex="0" data-tip="混合加密时用于加密 SM4 会话密钥。">?</span></label>
+                <textarea name="sm2_public_key">{{ form.sm2_public_key }}</textarea>
+              </div>
+              <div class="field-group">
+                <label>SM2 私钥 <span class="help-tip" tabindex="0" data-tip="混合解密时用于还原被 SM2 加密的会话密钥。">?</span></label>
+                <textarea name="sm2_private_key">{{ form.sm2_private_key }}</textarea>
+              </div>
+            </div>
+
+            <div class="form-grid two file-sm4-only">
+              <div class="field-group">
+                <label>SM4 Key <span class="help-tip" tabindex="0" data-tip="对称加密主密钥。固定实验时可手动填写，随机实验时也可由左侧自动生成。">?</span></label>
+                <input type="text" name="sm4_key" value="{{ form.sm4_key }}">
+              </div>
+              <div class="field-group">
+                <label>SM4 IV <span class="help-tip" tabindex="0" data-tip="CBC 模式需要的初始化向量。对于 raw 文件解密，必须与加密时一致。">?</span></label>
+                <input type="text" name="sm4_iv" value="{{ form.sm4_iv }}">
+              </div>
+            </div>
+
+            <div class="form-grid two">
+              <div class="field-group">
+                <label>上传文件</label>
+                <label class="file-picker">
+                  <input type="file" name="file_input" id="file-input-picker">
+                  <span class="file-picker-btn">选择文件</span>
+                  <span class="file-picker-name" id="file-picker-name">未选择文件</span>
+                </label>
+              </div>
+            </div>
+
+            <label class="checkbox-line">
+              <input type="checkbox" name="file_auto_header" {% if form.file_auto_header %}checked{% endif %}>
+              <span>自动保留常见图片文件头</span>
+              <span class="help-tip" tabindex="0" data-tip="勾选后，程序会根据常见图片格式的预设头长度自动保留文件头不加密，例如 JPG、PNG、BMP。适合演示图片头对格式识别的影响。">?</span>
+            </label>
+
+            <div class="inline-feedback" id="file-feedback"></div>
+            <div class="button-row">
+              <button class="button primary" type="submit" name="file_action" value="encrypt">加密文件</button>
+              <button class="button secondary" type="submit" name="file_action" value="decrypt">解密文件</button>
+            </div>
+          </form>
+
+          <div id="file-result-container">
+            {% if file_result %}
+              <div class="result-stack">
+                <div class="result-actions align-end">
+                  <button class="result-action-btn" type="button" data-copy-result="file-result-container">复制结果</button>
+                  <button class="result-action-btn" type="button" data-clear-result="file-result-container">清空结果</button>
+                </div>
+                <div class="download-banner">
+                  <div>
+                    <strong>{{ file_result.title }}</strong>
+                    {% if file_result.download_name %}
+                      <p>生成文件：{{ file_result.download_name }}</p>
+                    {% endif %}
+                  </div>
+                  {% if file_result.download_url %}
+                    <a class="button primary" href="{{ file_result.download_url }}">下载结果文件</a>
+                  {% endif %}
+                </div>
+                <div class="result-summary-grid">
+                  <article class="summary-card">
+                    <h3>基础信息</h3>
+                    <p>算法：{{ file_result.summary.algorithm }}</p>
+                    <p>布局：{{ file_result.summary.layout }}</p>
+                    <p>保留文件头：{{ file_result.summary.keep_header_bytes }} 字节</p>
+                  </article>
+                  <article class="summary-card">
+                    <h3>性能指标</h3>
+                    <p>处理耗时：{{ file_result.summary.metrics.seconds }} s</p>
+                    <p>吞吐量：{{ file_result.summary.metrics.throughput_mb_s }} MB/s</p>
+                    <p>CPU 峰值：{{ file_result.summary.metrics.cpu_peak_percent }} %</p>
+                    <p>内存峰值：{{ file_result.summary.metrics.memory_peak_mb }} MB</p>
+                  </article>
+                  {% if file_result.summary.key_hex or file_result.summary.iv_hex or file_result.summary.wrapped_sm4_key %}
+                    <article class="summary-card">
+                      <h3>关键参数</h3>
+                      {% if file_result.summary.key_hex %}<p>SM4 Key：{{ file_result.summary.key_hex }}</p>{% endif %}
+                      {% if file_result.summary.iv_hex %}<p>SM4 IV：{{ file_result.summary.iv_hex }}</p>{% endif %}
+                      {% if file_result.summary.wrapped_sm4_key %}<p>会话密钥：已使用 SM2 封装</p>{% endif %}
+                    </article>
+                  {% endif %}
+                </div>
+              </div>
+            {% endif %}
+          </div>
+          </section>
+
+          <section class="card tab-panel" id="tab-benchmark">
+          <div class="card-header">
+            <h2>性能测试与图表</h2>
+            <p>这里的测试数据不是上传文件，而是程序在本地临时生成的随机二进制数据。默认数据量偏小，便于快速预览；如果需要更完整的实验数据，可以自行调大。</p>
+          </div>
+          <form method="post" action="{{ url_for('benchmark_tools') }}" data-api-url="{{ url_for('api_benchmark_tools') }}" class="stack-form async-form" id="benchmark-form" data-last-submitted-state="">
+            <div class="checkbox-group">
+              <label><input type="checkbox" name="bench_algorithms" value="sm4" {% if 'sm4' in form.bench_algorithms %}checked{% endif %}> SM4</label>
+              <label><input type="checkbox" name="bench_algorithms" value="sm2-sm4" {% if 'sm2-sm4' in form.bench_algorithms %}checked{% endif %}> SM2 + SM4</label>
+            </div>
+
+            <div class="form-grid four">
+              <div class="field-group">
+                <label>布局 <span class="help-tip" tabindex="0" data-tip="性能测试时也会使用对应的文件封装方式。通常推荐 Bundle，便于观察完整流程。">?</span></label>
+                <select name="bench_layout">
+                  <option value="bundle" {% if form.bench_layout == 'bundle' %}selected{% endif %}>Bundle</option>
+                  <option value="raw" {% if form.bench_layout == 'raw' %}selected{% endif %}>Raw</option>
+                </select>
+              </div>
+              <div class="field-group">
+                <label>SM4 模式 <span class="help-tip" tabindex="0" data-tip="控制性能测试中 SM4 的工作模式。CBC 更常见，ECB 更适合做实验对比。">?</span></label>
+                <select name="bench_sm4_mode">
+                  <option value="cbc" {% if form.bench_sm4_mode == 'cbc' %}selected{% endif %}>CBC</option>
+                  <option value="ecb" {% if form.bench_sm4_mode == 'ecb' %}selected{% endif %}>ECB</option>
+                </select>
+              </div>
+              <div class="field-group bench-sm2-only">
+                <label>SM2 模式 <span class="help-tip" tabindex="0" data-tip="在 SM2 + SM4 性能测试中，决定会话密钥的密文组织格式。">?</span></label>
+                <select name="bench_sm2_mode">
+                  <option value="c1c3c2" {% if form.bench_sm2_mode == 'c1c3c2' %}selected{% endif %}>C1C3C2</option>
+                  <option value="c1c2c3" {% if form.bench_sm2_mode == 'c1c2c3' %}selected{% endif %}>C1C2C3</option>
+                </select>
+              </div>
+              <div class="field-group">
+                <label>数据量 <span class="help-tip" tabindex="0" data-tip="指定要测试的原始数据大小列表，例如 64KB,256KB,1MB。程序会生成对应大小的随机二进制数据。">?</span></label>
+                <input type="text" name="bench_sizes" value="{{ form.bench_sizes }}">
+              </div>
+            </div>
+
+            <div class="form-grid four">
+              <div class="field-group">
+                <label>Chunk Size <span class="help-tip" tabindex="0" data-tip="性能测试时单次处理的数据块大小。过小会增加 I/O 次数，过大则更吃内存。">?</span></label>
+                <input type="text" name="bench_chunk_size" value="{{ form.bench_chunk_size }}">
+              </div>
+              <div class="field-group">
+                <label>监控间隔 <span class="help-tip" tabindex="0" data-tip="CPU 和内存采样的时间间隔，越小越细，但也会增加统计开销。">?</span></label>
+                <input type="text" name="bench_monitor_interval" value="{{ form.bench_monitor_interval }}">
+              </div>
+              <div class="field-group">
+                <label>保留文件头字节 <span class="help-tip" tabindex="0" data-tip="如果你想把 benchmark 配置成模拟图片实验，可以保留前若干字节不加密。普通 benchmark 通常设为 0。">?</span></label>
+                <input type="text" name="bench_keep_header" value="{{ form.bench_keep_header }}">
+              </div>
+              <label class="checkbox-line inline">
+                <input type="checkbox" name="bench_auto_header" {% if form.bench_auto_header %}checked{% endif %}>
+                <span>自动图片头</span>
+                <span class="help-tip" tabindex="0" data-tip="用于性能测试时模拟图片实验配置。勾选后会按常见图片文件头预设自动保留文件头。">?</span>
+              </label>
+            </div>
+
+            <div class="form-grid two bench-sm2-only">
+              <div class="field-group">
+                <label>SM2 公钥</label>
+                <textarea name="sm2_public_key">{{ form.sm2_public_key }}</textarea>
+              </div>
+              <div class="field-group">
+                <label>SM2 私钥</label>
+                <textarea name="sm2_private_key">{{ form.sm2_private_key }}</textarea>
+              </div>
+            </div>
+
+            <div class="form-grid two">
+              <div class="field-group">
+                <label>SM4 Key</label>
+                <input type="text" name="sm4_key" value="{{ form.sm4_key }}">
+              </div>
+              <div class="field-group">
+                <label>SM4 IV</label>
+                <input type="text" name="sm4_iv" value="{{ form.sm4_iv }}">
+              </div>
+            </div>
+
+            <div class="inline-feedback" id="benchmark-feedback"></div>
+            <div class="button-row">
+              <button class="button primary" type="submit" id="benchmark-submit-btn">运行性能测试并生成图表</button>
+            </div>
+          </form>
+
+          <div id="benchmark-result-container">
+            {% if benchmark_result %}
+              <div class="result-stack">
+                <div class="result-actions align-end">
+                  <button class="result-action-btn" type="button" data-copy-result="benchmark-result-container">复制结果</button>
+                  <button class="result-action-btn" type="button" data-clear-result="benchmark-result-container" data-reset-label="重新测试">重新测试</button>
+                </div>
+                <div class="source-note">{{ benchmark_result.source_note }}</div>
+                <div class="benchmark-grid">
+                  {% for item in benchmark_result.summary %}
+                    <article class="summary-card">
+                      <h3>{{ item.algorithm }}</h3>
+                      <p>样本组数：{{ item.cases }}</p>
+                      <p>全部校验通过：{{ "是" if item.all_verified else "否" }}</p>
+                      <p>平均加密时间：{{ item.average_encrypt_seconds }} s</p>
+                      <p>平均解密时间：{{ item.average_decrypt_seconds }} s</p>
+                      <p>平均加密吞吐量：{{ item.average_encrypt_throughput_mb_s }} MB/s</p>
+                    </article>
+                  {% endfor %}
+                </div>
+                <div class="benchmark-case-grid">
+                  {% for item in benchmark_result.cases %}
+                    <article class="summary-card">
+                      <h3>{{ item.algorithm }} 分组结果</h3>
+                      {% for row in item.rows %}
+                        <div class="benchmark-row">
+                          <strong>{{ row.size_bytes }} B</strong>
+                          <span>加密：{{ row.encrypt_seconds }} s</span>
+                          <span>解密：{{ row.decrypt_seconds }} s</span>
+                          <span>加密吞吐量：{{ row.encrypt_throughput_mb_s }} MB/s</span>
+                          <span>校验：{{ "通过" if row.verified else "失败" }}</span>
+                        </div>
+                      {% endfor %}
+                    </article>
+                  {% endfor %}
+                </div>
+                <div class="chart-links">
+                  <a class="button secondary" href="{{ benchmark_result.charts.time_chart }}">下载加密时间对比图</a>
+                  <a class="button secondary" href="{{ benchmark_result.charts.throughput_chart }}">下载吞吐量对比图</a>
+                </div>
+                <div class="chart-preview-grid">
+                  <article class="result-card">
+                    <h3>加密时间对比图</h3>
+                    <img src="{{ benchmark_result.charts.time_chart_preview }}" alt="加密时间对比图" class="chart-preview">
+                  </article>
+                  <article class="result-card">
+                    <h3>吞吐量对比图</h3>
+                    <img src="{{ benchmark_result.charts.throughput_chart_preview }}" alt="吞吐量对比图" class="chart-preview">
+                  </article>
+                </div>
+              </div>
+            {% endif %}
+          </div>
+          </section>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    (function () {
+      const textAlgorithmSelect = document.getElementById('text-algorithm-select');
+      const fileAlgorithmSelect = document.getElementById('file-algorithm-select');
+      const generateSm2Btn = document.getElementById('generate-sm2-btn');
+      const generateSm4Btn = document.getElementById('generate-sm4-btn');
+      const fillSm2Btn = document.getElementById('fill-sm2-btn');
+      const fillSm4Btn = document.getElementById('fill-sm4-btn');
+      const copyButtons = document.querySelectorAll('.mini-copy-btn');
+      const tabButtons = document.querySelectorAll('.tab-btn');
+      const fileInputPicker = document.getElementById('file-input-picker');
+      const filePickerName = document.getElementById('file-picker-name');
+      const benchmarkSubmitBtn = document.getElementById('benchmark-submit-btn');
+      const LOCAL_STORAGE_KEY = 'gmssl-web-ui-state-v3';
+
+      function escapeHtml(value) {
+        return String(value || '')
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
+
+      function setFeedback(id, message, type) {
+        const node = document.getElementById(id);
+        if (!node) return;
+        node.textContent = message || '';
+        node.className = 'inline-feedback' + (message ? ' ' + type : '');
+      }
+
+      function toggleGroup(selector, visible) {
+        document.querySelectorAll(selector).forEach((element) => {
+          element.style.display = visible ? '' : 'none';
+        });
+      }
+
+      function syncTextSections() {
+        const algorithm = textAlgorithmSelect ? textAlgorithmSelect.value : 'sm4';
+        toggleGroup('.text-sm4-only', algorithm === 'sm4');
+        toggleGroup('.text-sm2-only', algorithm === 'sm2');
+        toggleGroup('.text-enc-only', algorithm !== 'sm3');
+      }
+
+      function syncFileSections() {
+        const algorithm = fileAlgorithmSelect ? fileAlgorithmSelect.value : 'sm4';
+        toggleGroup('.file-sm2-only', algorithm === 'sm2-sm4');
+        toggleGroup('.file-sm4-only', algorithm === 'sm4' || algorithm === 'sm2-sm4');
+      }
+
+      function syncBenchmarkSections() {
+        const checked = Array.from(document.querySelectorAll('input[name="bench_algorithms"]:checked')).map((node) => node.value);
+        toggleGroup('.bench-sm2-only', checked.includes('sm2-sm4'));
+      }
+
+      function updateKeyDisplays(keys) {
+        const mapping = {
+          'sm2_public_key': 'sm2-public-display',
+          'sm2_private_key': 'sm2-private-display',
+          'sm4_key': 'sm4-key-display',
+          'sm4_iv': 'sm4-iv-display'
+        };
+
+        Object.entries(mapping).forEach(([field, id]) => {
+          if (Object.prototype.hasOwnProperty.call(keys, field)) {
+            const node = document.getElementById(id);
+            if (node) node.value = keys[field] || '';
+          }
+        });
+
+        saveUiState();
+      }
+
+      function fillSharedInputs(keys) {
+        document.querySelectorAll('textarea[name="sm2_public_key"]').forEach((node) => { if (keys.sm2_public_key !== undefined) node.value = keys.sm2_public_key; });
+        document.querySelectorAll('textarea[name="sm2_private_key"]').forEach((node) => { if (keys.sm2_private_key !== undefined) node.value = keys.sm2_private_key; });
+        document.querySelectorAll('input[name="sm4_key"]').forEach((node) => { if (keys.sm4_key !== undefined) node.value = keys.sm4_key; });
+        document.querySelectorAll('input[name="sm4_iv"]').forEach((node) => { if (keys.sm4_iv !== undefined) node.value = keys.sm4_iv; });
+        saveUiState();
+      }
+
+      function renderTextResult(result) {
+        const container = document.getElementById('text-result-container');
+        if (!container) return;
+        const body = !result.right_label
+          ? `
+            <div class="cipher-card-header">
+              <h3>${escapeHtml(result.left_label)}</h3>
+              <button class="mini-copy-btn large" type="button" data-copy-result-box="text-primary-result">复制</button>
+            </div>
+            <textarea id="text-primary-result" readonly class="result-box cipher-box">${escapeHtml(result.left_value)}</textarea>
+          `
+          : `
+            <div class="cipher-card-header">
+              <h3>${escapeHtml(result.left_label)}</h3>
+              <button class="mini-copy-btn large" type="button" data-copy-result-box="text-primary-result">复制</button>
+            </div>
+            <textarea id="text-primary-result" readonly class="result-box cipher-box">${escapeHtml(result.left_value)}</textarea>
+            <div class="cipher-meta"><strong>${escapeHtml(result.right_label)}</strong>：${escapeHtml(result.right_value)}</div>
+          `;
+        container.innerHTML = `
+          <div class="result-toolbar">
+            <div class="subheading">${escapeHtml(result.title)}</div>
+            <div class="result-actions">
+              <button class="result-action-btn" type="button" data-copy-result="text-result-container">复制结果</button>
+              <button class="result-action-btn" type="button" data-clear-result="text-result-container">清空结果</button>
+            </div>
+          </div>
+          <article class="cipher-card">
+            ${body}
+          </article>
+        `;
+        bindResultActionButtons();
+        saveUiState();
+      }
+
+      function renderFileResult(result) {
+        const container = document.getElementById('file-result-container');
+        if (!container) return;
+        const downloadAction = result.download_url
+          ? `<a class="button primary" href="${result.download_url}">下载结果文件</a>`
+          : '';
+        const fileMeta = result.download_name ? `<p>生成文件：${escapeHtml(result.download_name)}</p>` : '';
+        const summary = result.summary || {};
+        const metrics = summary.metrics || {};
+        const keyCard = (summary.key_hex || summary.iv_hex || summary.wrapped_sm4_key) ? `
+          <article class="summary-card">
+            <h3>关键参数</h3>
+            ${summary.key_hex ? `<p>SM4 Key：${escapeHtml(summary.key_hex)}</p>` : ''}
+            ${summary.iv_hex ? `<p>SM4 IV：${escapeHtml(summary.iv_hex)}</p>` : ''}
+            ${summary.wrapped_sm4_key ? `<p>会话密钥：已使用 SM2 封装</p>` : ''}
+          </article>
+        ` : '';
+        container.innerHTML = `
+          <div class="result-stack">
+            <div class="result-actions align-end">
+              <button class="result-action-btn" type="button" data-copy-result="file-result-container">复制结果</button>
+              <button class="result-action-btn" type="button" data-clear-result="file-result-container">清空结果</button>
+            </div>
+            <div class="download-banner">
+              <div>
+                <strong>${escapeHtml(result.title)}</strong>
+                ${fileMeta}
+              </div>
+              ${downloadAction}
+            </div>
+            <div class="result-summary-grid">
+              <article class="summary-card">
+                <h3>基础信息</h3>
+                <p>算法：${escapeHtml(summary.algorithm || '')}</p>
+                <p>布局：${escapeHtml(summary.layout || '')}</p>
+                <p>保留文件头：${escapeHtml(summary.keep_header_bytes || 0)} 字节</p>
+              </article>
+              <article class="summary-card">
+                <h3>性能指标</h3>
+                <p>处理耗时：${escapeHtml(metrics.seconds || 0)} s</p>
+                <p>吞吐量：${escapeHtml(metrics.throughput_mb_s || 0)} MB/s</p>
+                <p>CPU 峰值：${escapeHtml(metrics.cpu_peak_percent || 0)} %</p>
+                <p>内存峰值：${escapeHtml(metrics.memory_peak_mb || 0)} MB</p>
+              </article>
+              ${keyCard}
+            </div>
+          </div>
+        `;
+        bindResultActionButtons();
+        saveUiState();
+      }
+
+      function renderBenchmarkResult(result) {
+        const container = document.getElementById('benchmark-result-container');
+        if (!container) return;
+        const summaryHtml = result.summary.map((item) => `
+          <article class="summary-card">
+            <h3>${escapeHtml(item.algorithm)}</h3>
+            <p>样本组数：${escapeHtml(item.cases)}</p>
+            <p>全部校验通过：${item.all_verified ? '是' : '否'}</p>
+            <p>平均加密时间：${escapeHtml(item.average_encrypt_seconds)} s</p>
+            <p>平均解密时间：${escapeHtml(item.average_decrypt_seconds)} s</p>
+            <p>平均加密吞吐量：${escapeHtml(item.average_encrypt_throughput_mb_s)} MB/s</p>
+          </article>
+        `).join('');
+        const caseHtml = (result.cases || []).map((item) => `
+          <article class="summary-card">
+            <h3>${escapeHtml(item.algorithm)} 分组结果</h3>
+            ${(item.rows || []).map((row) => `
+              <div class="benchmark-row">
+                <strong>${escapeHtml(row.size_bytes)} B</strong>
+                <span>加密：${escapeHtml(row.encrypt_seconds)} s</span>
+                <span>解密：${escapeHtml(row.decrypt_seconds)} s</span>
+                <span>加密吞吐量：${escapeHtml(row.encrypt_throughput_mb_s)} MB/s</span>
+                <span>校验：${row.verified ? '通过' : '失败'}</span>
+              </div>
+            `).join('')}
+          </article>
+        `).join('');
+
+        container.innerHTML = `
+          <div class="result-stack">
+            <div class="result-actions align-end">
+              <button class="result-action-btn" type="button" data-copy-result="benchmark-result-container">复制结果</button>
+              <button class="result-action-btn" type="button" data-clear-result="benchmark-result-container" data-reset-label="重新测试">重新测试</button>
+            </div>
+            <div class="source-note">${escapeHtml(result.source_note)}</div>
+            <div class="benchmark-grid">${summaryHtml}</div>
+            <div class="benchmark-case-grid">${caseHtml}</div>
+            <div class="chart-links">
+              <a class="button secondary" href="${result.charts.time_chart}">下载加密时间对比图</a>
+              <a class="button secondary" href="${result.charts.throughput_chart}">下载吞吐量对比图</a>
+            </div>
+            <div class="chart-preview-grid">
+              <article class="result-card">
+                <h3>加密时间对比图</h3>
+                <img src="${result.charts.time_chart_preview}" alt="加密时间对比图" class="chart-preview">
+              </article>
+              <article class="result-card">
+                <h3>吞吐量对比图</h3>
+                <img src="${result.charts.throughput_chart_preview}" alt="吞吐量对比图" class="chart-preview">
+              </article>
+            </div>
+          </div>
+        `;
+        bindResultActionButtons();
+        if (benchmarkSubmitBtn) benchmarkSubmitBtn.style.display = 'none';
+        saveUiState();
+      }
+
+      function serializeFormState(form) {
+        const formData = new FormData(form);
+        const pairs = [];
+        formData.forEach((value, key) => {
+          if (value instanceof File) {
+            const tag = value.name ? `${value.name}:${value.size}:${value.type || ''}:${value.lastModified || 0}` : '';
+            pairs.push([key, tag]);
+          } else {
+            pairs.push([key, value]);
+          }
+        });
+        pairs.sort((a, b) => {
+          if (a[0] === b[0]) return String(a[1]).localeCompare(String(b[1]));
+          return a[0].localeCompare(b[0]);
+        });
+        return JSON.stringify(pairs);
+      }
+
+      function clearFormInputs(formId, resultId) {
+        const form = document.getElementById(formId);
+        const result = document.getElementById(resultId);
+        if (!form) return;
+
+        form.querySelectorAll('textarea').forEach((node) => {
+          if (node.name === 'text_input') node.value = '';
+        });
+        form.querySelectorAll('input[type="text"]').forEach((node) => {
+          if (!['sm4_key', 'sm4_iv', 'file_chunk_size', 'file_monitor_interval', 'file_keep_header', 'bench_sizes', 'bench_chunk_size', 'bench_monitor_interval', 'bench_keep_header'].includes(node.name)) {
+            node.value = '';
+          }
+        });
+        form.querySelectorAll('input[type="file"]').forEach((node) => {
+          node.value = '';
+        });
+        if (formId === 'file-form' && filePickerName) {
+          filePickerName.textContent = '未选择文件';
+        }
+        if (result) result.innerHTML = '';
+        delete form.dataset.lastSubmittedState;
+        saveUiState();
+      }
+
+      function snapshotForm(form) {
+        const data = {};
+        new FormData(form).forEach((value, key) => {
+          if (value instanceof File) {
+            if (value.name) {
+              data[key] = {
+                name: value.name,
+                size: value.size,
+                type: value.type || ''
+              };
+            }
+          } else {
+            if (data[key] === undefined) {
+              data[key] = value;
+            } else if (Array.isArray(data[key])) {
+              data[key].push(value);
+            } else {
+              data[key] = [data[key], value];
+            }
+          }
+        });
+        return data;
+      }
+
+      function getResultHtml(id) {
+        return document.getElementById(id)?.innerHTML || '';
+      }
+
+      function saveUiState() {
+        const activeTab = document.querySelector('.tab-btn.active')?.dataset.tabTarget || 'tab-text';
+        const payload = {
+          activeTab,
+          forms: {
+            text: snapshotForm(document.getElementById('text-form')),
+            file: snapshotForm(document.getElementById('file-form')),
+            benchmark: snapshotForm(document.getElementById('benchmark-form'))
+          },
+          keyDisplays: {
+            sm2_public_key: document.getElementById('sm2-public-display')?.value || '',
+            sm2_private_key: document.getElementById('sm2-private-display')?.value || '',
+            sm4_key: document.getElementById('sm4-key-display')?.value || '',
+            sm4_iv: document.getElementById('sm4-iv-display')?.value || ''
+          },
+          results: {
+            text: getResultHtml('text-result-container'),
+            file: getResultHtml('file-result-container'),
+            benchmark: getResultHtml('benchmark-result-container')
+          },
+          benchmarkButtonHidden: benchmarkSubmitBtn ? benchmarkSubmitBtn.style.display === 'none' : false,
+          fileNameLabel: filePickerName ? filePickerName.textContent : '未选择文件'
+        };
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(payload));
+      }
+
+      function restoreFormData(form, data) {
+        if (!form || !data) return;
+        Object.entries(data).forEach(([key, value]) => {
+          const fields = form.querySelectorAll(`[name="${key}"]`);
+          if (!fields.length) return;
+          if (fields[0].type === 'checkbox') {
+            fields.forEach((field) => {
+              field.checked = Array.isArray(value) ? value.includes(field.value) : Boolean(value);
+            });
+            return;
+          }
+          if (fields[0].type === 'radio') {
+            fields.forEach((field) => {
+              field.checked = field.value === value;
+            });
+            return;
+          }
+          if (fields[0].tagName === 'SELECT' || fields[0].tagName === 'TEXTAREA' || fields[0].tagName === 'INPUT') {
+            if (fields[0].type !== 'file' && !Array.isArray(value) && typeof value !== 'object') {
+              fields[0].value = value;
+            }
+          }
+        });
+      }
+
+      function restoreUiState() {
+        const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
+        if (!raw) return;
+        try {
+          const state = JSON.parse(raw);
+          if (state.forms) {
+            restoreFormData(document.getElementById('text-form'), state.forms.text);
+            restoreFormData(document.getElementById('file-form'), state.forms.file);
+            restoreFormData(document.getElementById('benchmark-form'), state.forms.benchmark);
+          }
+          if (state.keyDisplays) {
+            updateKeyDisplays(state.keyDisplays);
+          }
+          if (state.results) {
+            const textResult = document.getElementById('text-result-container');
+            const fileResult = document.getElementById('file-result-container');
+            const benchResult = document.getElementById('benchmark-result-container');
+            if (textResult && !textResult.innerHTML.trim()) textResult.innerHTML = state.results.text || '';
+            if (fileResult && !fileResult.innerHTML.trim()) fileResult.innerHTML = state.results.file || '';
+            if (benchResult && !benchResult.innerHTML.trim()) benchResult.innerHTML = state.results.benchmark || '';
+            bindResultActionButtons();
+          }
+          if (state.fileNameLabel && filePickerName) {
+            filePickerName.textContent = state.fileNameLabel;
+          }
+          if (state.activeTab) {
+            activateTab(state.activeTab);
+          }
+          if (benchmarkSubmitBtn && state.benchmarkButtonHidden) {
+            benchmarkSubmitBtn.style.display = 'none';
+          }
+        } catch (_) {
+          localStorage.removeItem(LOCAL_STORAGE_KEY);
+        }
+      }
+
+      async function postJson(url, payload) {
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload || {})
+        });
+        const data = await response.json();
+        if (!response.ok || !data.ok) {
+          throw new Error(data.error || '请求失败');
+        }
+        return data;
+      }
+
+      async function submitAsyncForm(form, feedbackId, loadingMessage, onSuccess, submitter) {
+        const formData = new FormData(form);
+        const actionValue = submitter && submitter.value ? submitter.value : '__default__';
+        if (submitter && submitter.name) {
+          formData.set(submitter.name, submitter.value);
+        }
+        const currentState = JSON.stringify({
+          action: actionValue,
+          state: serializeFormState(form)
+        });
+        const isEncryptAction = submitter && submitter.value === 'encrypt';
+        const isDecryptAction = submitter && submitter.value === 'decrypt';
+        const isSm2TextEncrypt = form.id === 'text-form'
+          && isEncryptAction
+          && (form.querySelector('select[name="text_algorithm"]')?.value === 'sm2');
+        if ((isEncryptAction || isDecryptAction) && form.dataset.lastSubmittedState === currentState && !isSm2TextEncrypt) {
+          setFeedback(feedbackId, '', '');
+          return;
+        }
+
+        const originalText = submitter ? submitter.textContent : '';
+        try {
+          setFeedback(feedbackId, loadingMessage, 'info');
+          if (submitter) {
+            submitter.disabled = true;
+            submitter.textContent = '处理中...';
+          }
+          const response = await fetch(form.dataset.apiUrl, { method: 'POST', body: formData });
+          const data = await response.json();
+          if (!response.ok || !data.ok) {
+            throw new Error(data.error || '请求失败');
+          }
+          if (data.keys) {
+            updateKeyDisplays(data.keys);
+          }
+          onSuccess(data.result);
+          form.dataset.lastSubmittedState = currentState;
+          setFeedback(feedbackId, '', '');
+        } catch (error) {
+          setFeedback(feedbackId, error.message, 'error');
+        } finally {
+          if (submitter) {
+            submitter.disabled = false;
+            submitter.textContent = originalText;
+          }
+        }
+      }
+
+      function attachAsyncForm(formId, feedbackId, loadingMessage, renderFn) {
+        const form = document.getElementById(formId);
+        if (!form) return;
+        let clickedButton = null;
+
+        form.querySelectorAll('button[type="submit"]').forEach((button) => {
+          button.addEventListener('click', () => {
+            clickedButton = button;
+          });
+        });
+
+        form.addEventListener('submit', (event) => {
+          event.preventDefault();
+          submitAsyncForm(form, feedbackId, loadingMessage, renderFn, clickedButton);
+        });
+      }
+
+      function copyField(button) {
+        const target = document.getElementById(button.dataset.copyTarget);
+        const text = target ? target.value.trim() : '';
+        if (!text) {
+          return;
+        }
+        const originalText = button.textContent;
+        target.classList.add('copy-flash');
+        navigator.clipboard.writeText(text).then(() => {
+          button.textContent = '已复制';
+          setTimeout(() => {
+            button.textContent = originalText;
+            target.classList.remove('copy-flash');
+          }, 1200);
+        }).catch(() => {
+          button.textContent = '失败';
+          setTimeout(() => {
+            button.textContent = originalText;
+            target.classList.remove('copy-flash');
+          }, 1200);
+        });
+      }
+
+      function copyBox(button) {
+        const target = document.getElementById(button.dataset.copyResultBox);
+        const text = target ? target.value.trim() : '';
+        if (!text) return;
+        const original = button.textContent;
+        target.classList.add('copy-flash');
+        navigator.clipboard.writeText(text).then(() => {
+          button.textContent = '已复制';
+          setTimeout(() => {
+            button.textContent = original;
+            target.classList.remove('copy-flash');
+          }, 1200);
+        }).catch(() => {
+          button.textContent = '失败';
+          setTimeout(() => {
+            button.textContent = original;
+            target.classList.remove('copy-flash');
+          }, 1200);
+        });
+      }
+
+      function activateTab(targetId) {
+        tabButtons.forEach((button) => {
+          button.classList.toggle('active', button.dataset.tabTarget === targetId);
+        });
+        document.querySelectorAll('.tab-panel').forEach((panel) => {
+          panel.classList.toggle('active', panel.id === targetId);
+        });
+      }
+
+      function bindResultActionButtons() {
+        document.querySelectorAll('[data-copy-result]').forEach((button) => {
+          if (button.dataset.boundCopy === 'true') return;
+          button.dataset.boundCopy = 'true';
+          button.addEventListener('click', async () => {
+            const container = document.getElementById(button.dataset.copyResult);
+            const textareas = container ? Array.from(container.querySelectorAll('textarea')) : [];
+            const combined = textareas.map((node) => node.value.trim()).filter(Boolean).join('\n\n');
+            if (!combined) return;
+            const original = button.textContent;
+            try {
+              await navigator.clipboard.writeText(combined);
+              button.textContent = '已复制';
+            } catch (_) {
+              button.textContent = '失败';
+            }
+            setTimeout(() => {
+              button.textContent = original;
+            }, 1200);
+          });
+        });
+
+        document.querySelectorAll('[data-clear-result]').forEach((button) => {
+          if (button.dataset.boundClear === 'true') return;
+          button.dataset.boundClear = 'true';
+          button.addEventListener('click', () => {
+            const container = document.getElementById(button.dataset.clearResult);
+            if (container) container.innerHTML = '';
+            if (button.dataset.clearResult === 'text-result-container') {
+              clearFormInputs('text-form', 'text-result-container');
+            } else if (button.dataset.clearResult === 'file-result-container') {
+              clearFormInputs('file-form', 'file-result-container');
+            } else if (button.dataset.clearResult === 'benchmark-result-container') {
+              clearFormInputs('benchmark-form', 'benchmark-result-container');
+              if (benchmarkSubmitBtn) benchmarkSubmitBtn.style.display = '';
+            }
+            if (button.dataset.resetLabel) {
+              button.textContent = button.dataset.resetLabel;
+            }
+          });
+        });
+
+        document.querySelectorAll('[data-copy-result-box]').forEach((button) => {
+          if (button.dataset.boundBoxCopy === 'true') return;
+          button.dataset.boundBoxCopy = 'true';
+          button.addEventListener('click', () => copyBox(button));
+        });
+      }
+
+      if (textAlgorithmSelect) {
+        textAlgorithmSelect.addEventListener('change', syncTextSections);
+      }
+      if (fileAlgorithmSelect) {
+        fileAlgorithmSelect.addEventListener('change', syncFileSections);
+      }
+      document.querySelectorAll('input[name="bench_algorithms"]').forEach((node) => {
+        node.addEventListener('change', syncBenchmarkSections);
+      });
+
+      attachAsyncForm('text-form', 'text-feedback', '正在处理文本操作...', renderTextResult);
+      attachAsyncForm('file-form', 'file-feedback', '正在处理文件，请稍候...', renderFileResult);
+      attachAsyncForm('benchmark-form', 'benchmark-feedback', '正在使用本地随机二进制数据执行性能测试，请稍候...', renderBenchmarkResult);
+
+      if (generateSm2Btn) {
+        generateSm2Btn.addEventListener('click', async () => {
+          const originalText = generateSm2Btn.textContent;
+          try {
+            setFeedback('key-feedback', '正在生成 SM2 公私钥...', 'info');
+            generateSm2Btn.disabled = true;
+            generateSm2Btn.textContent = '生成中...';
+            const data = await postJson('{{ url_for("api_generate_keys", key_type="sm2") }}');
+            const keys = {
+              sm2_public_key: data.keys.public_key,
+              sm2_private_key: data.keys.private_key
+            };
+            updateKeyDisplays(keys);
+            setFeedback('key-feedback', '', '');
+          } catch (error) {
+            setFeedback('key-feedback', error.message, 'error');
+          } finally {
+            generateSm2Btn.disabled = false;
+            generateSm2Btn.textContent = originalText;
+          }
+        });
+      }
+
+      if (generateSm4Btn) {
+        generateSm4Btn.addEventListener('click', async () => {
+          const originalText = generateSm4Btn.textContent;
+          try {
+            setFeedback('key-feedback', '正在生成 SM4 Key 与 IV...', 'info');
+            generateSm4Btn.disabled = true;
+            generateSm4Btn.textContent = '生成中...';
+            const currentMode = document.querySelector('select[name="text_sm4_mode"]')?.value || 'cbc';
+            const data = await postJson('{{ url_for("api_generate_keys", key_type="sm4") }}', { mode: currentMode });
+            const keys = {
+              sm4_key: data.keys.key_hex || '',
+              sm4_iv: data.keys.iv_hex || ''
+            };
+            updateKeyDisplays(keys);
+            setFeedback('key-feedback', '', '');
+          } catch (error) {
+            setFeedback('key-feedback', error.message, 'error');
+          } finally {
+            generateSm4Btn.disabled = false;
+            generateSm4Btn.textContent = originalText;
+          }
+        });
+      }
+
+      if (fileInputPicker && filePickerName) {
+        fileInputPicker.addEventListener('change', () => {
+          const file = fileInputPicker.files && fileInputPicker.files[0];
+          filePickerName.textContent = file ? file.name : '未选择文件';
+          saveUiState();
+        });
+      }
+
+      if (fillSm2Btn) {
+        fillSm2Btn.addEventListener('click', () => {
+          fillSharedInputs({
+            sm2_public_key: document.getElementById('sm2-public-display')?.value || '',
+            sm2_private_key: document.getElementById('sm2-private-display')?.value || ''
+          });
+          setFeedback('key-feedback', '', '');
+        });
+      }
+
+      if (fillSm4Btn) {
+        fillSm4Btn.addEventListener('click', () => {
+          fillSharedInputs({
+            sm4_key: document.getElementById('sm4-key-display')?.value || '',
+            sm4_iv: document.getElementById('sm4-iv-display')?.value || ''
+          });
+          setFeedback('key-feedback', '', '');
+        });
+      }
+
+      copyButtons.forEach((button) => {
+        button.addEventListener('click', () => copyField(button));
+      });
+
+      tabButtons.forEach((button) => {
+        button.addEventListener('click', () => activateTab(button.dataset.tabTarget));
+      });
+
+      syncTextSections();
+      syncFileSections();
+      syncBenchmarkSections();
+      bindResultActionButtons();
+      restoreUiState();
+      syncTextSections();
+      syncFileSections();
+      syncBenchmarkSections();
+
+      if (document.getElementById('benchmark-result-container')?.innerHTML.trim() && benchmarkSubmitBtn) {
+        benchmarkSubmitBtn.style.display = 'none';
+      }
+
+      document.querySelectorAll('input, textarea, select').forEach((node) => {
+        node.addEventListener('input', saveUiState);
+        node.addEventListener('change', saveUiState);
+      });
+    })();
+  </script>
+</body>
+</html>
