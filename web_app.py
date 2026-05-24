@@ -8,6 +8,8 @@ from typing import Any, Dict, List, Tuple
 from flask import Flask, jsonify, redirect, render_template, request, send_file, session, url_for
 from werkzeug.utils import secure_filename
 
+import uuid
+
 from crypto_app import (
     InputValidationError,
     benchmark_files,
@@ -157,6 +159,17 @@ def make_output_name(original_name: str, layout: str, action: str) -> Path:
     return OUTPUT_DIR / generated
 
 
+# def save_uploaded_file(field_name: str) -> Tuple[Path, str]:
+#     file_storage = request.files.get(field_name)
+#     if not file_storage or not file_storage.filename:
+#         raise InputValidationError("请上传要处理的文件")
+
+#     original_name = Path(file_storage.filename).name
+#     suffix = Path(original_name).suffix or ".bin"
+#     with tempfile.NamedTemporaryFile(delete=False, suffix=suffix, prefix="upload_", dir=UPLOAD_DIR) as temp_file:
+#         file_storage.save(temp_file.name)
+#         return Path(temp_file.name), original_name
+
 def save_uploaded_file(field_name: str) -> Tuple[Path, str]:
     file_storage = request.files.get(field_name)
     if not file_storage or not file_storage.filename:
@@ -164,9 +177,16 @@ def save_uploaded_file(field_name: str) -> Tuple[Path, str]:
 
     original_name = Path(file_storage.filename).name
     suffix = Path(original_name).suffix or ".bin"
-    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix, prefix="upload_", dir=UPLOAD_DIR) as temp_file:
-        file_storage.save(temp_file.name)
-        return Path(temp_file.name), original_name
+    
+    # 直接用 Path 拼接路径，不用 tempfile 的 with 块
+    temp_path = UPLOAD_DIR / f"upload_{uuid.uuid4().hex}{suffix}"
+    # 保存文件
+    file_storage.save(str(temp_path))
+    # 验证文件是否真的保存成功
+    if not temp_path.exists() or temp_path.stat().st_size == 0:
+        raise IOError("文件上传失败，请重试")
+
+    return temp_path, original_name
 
 
 def execute_text_action(form_state: Dict[str, Any], action: str, text_input: str) -> Dict[str, Any]:
