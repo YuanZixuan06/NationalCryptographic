@@ -35,7 +35,7 @@ from crypto_app import (
 
 
 BASE_DIR = Path(__file__).resolve().parent
-RUNTIME_DIR = BASE_DIR / "web_runtime"
+RUNTIME_DIR = BASE_DIR / "/tmp/web_runtime"
 UPLOAD_DIR = RUNTIME_DIR / "uploads"
 OUTPUT_DIR = RUNTIME_DIR / "outputs"
 CHART_DIR = RUNTIME_DIR / "charts"
